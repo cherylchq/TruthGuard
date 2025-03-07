@@ -1,26 +1,25 @@
 import React, { useState, useRef } from 'react';
 
-function FactCheckForm({ onSubmit }) {
+function FactCheckForm({ onSubmit, isLoading }) {
   const [text, setText] = useState('');
   const [image, setImage] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
   const fileInputRef = useRef(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!text && !image) return;
     
-    setIsLoading(true);
+    // Trim and validate input
+    const trimmedText = text.trim();
+    if (!trimmedText) return;
     
-    try {
-      // In a real app, you would handle image upload here
-      // For now, we'll just pass the text
-      await onSubmit({ text, image });
-    } catch (error) {
-      console.error('Error submitting form:', error);
-    } finally {
-      setIsLoading(false);
-    }
+    // Prepare submission data
+    const submissionData = {
+      claim: trimmedText,
+      ...(image && { image })
+    };
+
+    // Call parent onSubmit function
+    await onSubmit(submissionData);
   };
 
   const handleImageChange = (e) => {
@@ -31,6 +30,14 @@ function FactCheckForm({ onSubmit }) {
 
   const triggerFileInput = () => {
     fileInputRef.current.click();
+  };
+
+  const removeImage = () => {
+    setImage(null);
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   return (
@@ -49,14 +56,16 @@ function FactCheckForm({ onSubmit }) {
               value={text}
               onChange={(e) => setText(e.target.value)}
               placeholder="Paste an article, claim, or statement to verify"
+              disabled={isLoading}
             ></textarea>
             
             {/* Attachment Icon */}
             <button
               type="button"
               onClick={triggerFileInput}
-              className="absolute bottom-3 right-3 text-gray-500 hover:text-blue-500 focus:outline-none"
+              className="absolute bottom-3 right-12 text-gray-500 hover:text-blue-500 focus:outline-none"
               title="Attach screenshot"
+              disabled={isLoading}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
@@ -72,6 +81,7 @@ function FactCheckForm({ onSubmit }) {
               onChange={handleImageChange}
               id="file-upload"
               name="file-upload"
+              disabled={isLoading}
             />
           </div>
           
@@ -85,7 +95,8 @@ function FactCheckForm({ onSubmit }) {
               <button 
                 type="button" 
                 className="ml-2 text-red-500 hover:text-red-700"
-                onClick={() => setImage(null)}
+                onClick={removeImage}
+                disabled={isLoading}
                 title="Remove screenshot"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -101,7 +112,7 @@ function FactCheckForm({ onSubmit }) {
             type="submit"
             disabled={isLoading || (!text && !image)}
             className={`px-6 py-3 rounded-md shadow-sm text-white font-medium 
-              ${(!text && !image) || isLoading ? 'bg-blue-300' : 'bg-blue-600 hover:bg-blue-700'} 
+              ${(isLoading || (!text && !image)) ? 'bg-blue-300 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'} 
               transition duration-150 ease-in-out`}
           >
             {isLoading ? (
