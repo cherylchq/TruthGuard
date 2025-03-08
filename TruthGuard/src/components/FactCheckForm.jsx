@@ -3,7 +3,6 @@ import React, { useState, useRef } from 'react';
 function FactCheckForm({ onSubmit, isLoading }) {
   const [text, setText] = useState('');
   const [image, setImage] = useState(null);
-  const [useAI, setUseAI] = useState(false);
   const fileInputRef = useRef(null);
 
   const handleSubmit = async (e) => {
@@ -14,7 +13,6 @@ function FactCheckForm({ onSubmit, isLoading }) {
     
     const submissionData = {
       claim: trimmedText,
-      useAI: useAI,
       ...(image && { image })
     };
 
@@ -100,31 +98,6 @@ function FactCheckForm({ onSubmit, isLoading }) {
               </button>
             </div>
           )}
-        </div>
-        
-        {/* Verification Method Selection */}
-        <div className="flex items-center space-x-4 mt-2">
-          <div className="text-sm font-medium text-gray-700">Verification Method:</div>
-          <label className="inline-flex items-center">
-            <input
-              type="radio"
-              className="form-radio text-blue-600"
-              checked={!useAI}
-              onChange={() => setUseAI(false)}
-              disabled={isLoading}
-            />
-            <span className="ml-2 text-sm">Standard Fact Check</span>
-          </label>
-          <label className="inline-flex items-center">
-            <input
-              type="radio"
-              className="form-radio text-blue-600"
-              checked={useAI}
-              onChange={() => setUseAI(true)}
-              disabled={isLoading}
-            />
-            <span className="ml-2 text-sm">AI-Powered Analysis</span>
-          </label>
         </div>
         
         <div className="flex justify-center">

@@ -1,171 +1,140 @@
-import React, { useState, useCallback } from 'react';
-import FactCheckForm from './components/FactCheckForm.jsx';
-import ResultDisplay from './components/ResultDisplay.jsx';
-import Header from './components/Header.jsx';
+import React, { useState } from 'react';
+import Header from './components/Header';
+import FactCheckForm from './components/FactCheckForm';
+import ResultDisplay from './components/ResultDisplay';
 
-function useFactCheck() {
+function App() {
+  const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
 
-  const performFactCheck = useCallback(async (data) => {
-    setResult(null);
-    setError(null);
+  const handleSubmit = async (submissionData) => {
     setIsLoading(true);
-
+    setError(null);
+    
     try {
-      if (!data || !data.claim) {
-        throw new Error('Invalid input: No claim provided');
+      // Create a FormData object to handle both text and image
+      const formData = new FormData();
+      formData.append('claim', submissionData.claim);
+      
+      // Append image if it exists
+      if (submissionData.image) {
+        formData.append('image', submissionData.image);
       }
-
-      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
-      const endpoint = data.useAI ? '/analyze-text' : '/fact-check';
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), data.useAI ? 30000 : 10000);
-
-      try {
-        const response = await fetch(`${backendUrl}${endpoint}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ query: data.claim }),
-          signal: controller.signal
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
-        }
-
-        const responseData = await response.json();
-        let processedResult;
-        
-        if (data.useAI) {
-          processedResult = {
-            claim: data.claim,
-            isAIAnalysis: true,
-            analysis: responseData.ai_analysis.analysis,
-            confidence: responseData.ai_analysis.confidence || 0.5,
-            sources: []
-          };
-        } else {
-          processedResult = {
-            claim: data.claim,
-            isAIAnalysis: false,
-            factCheck: responseData.fact_check_result?.claims?.[0]?.text || 'No detailed fact-check available',
-            confidence: calculateConfidence(responseData),
-            sources: extractSources(responseData)
-          };
-        }
-
-        setResult(processedResult);
-      } catch (fetchError) {
-        clearTimeout(timeoutId);
-        
-        if (fetchError.name === 'AbortError') {
-          throw new Error('Request timed out. Please check your network connection.');
-        }
-        throw fetchError;
+      
+      // Send data to the correct endpoint
+      const endpoint = submissionData.image ? '/api/analyze-content' : '/api/analyze-text';
+      
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Server responded with status ${response.status}`);
       }
+      
+      const data = await response.json();
+      
+      // Process analysis results
+      setResult({
+        claim: submissionData.claim,
+        analysis: data.ai_analysis.analysis,
+        confidence: data.ai_analysis.confidence,
+        imageAnalyzed: !!submissionData.image
+      });
     } catch (err) {
-      console.error('Fact-check error:', err);
-      
-      const errorMessage = 
-        err.message.includes('fetch') 
-          ? 'Unable to connect to the fact-checking service. Please check the backend server.'
-        : err.message.includes('timed out')
-          ? 'The request timed out. Please check your network connection.'
-        : 'An unexpected error occurred while fact-checking.';
-      
-      setError(errorMessage);
+      console.error('Error submitting claim:', err);
+      setError('Failed to analyze claim. Please try again later.');
     } finally {
       setIsLoading(false);
     }
-  }, []);
-
-  // Helper function to calculate confidence
-  const calculateConfidence = (responseData) => {
-    if (responseData.error) return 0.3;
-    
-    const claims = responseData.fact_check_result?.claims;
-    if (!claims || claims.length === 0) return 0.5;
-
-    return claims.length > 0 ? 0.7 : 0.5;
   };
-
-  // Helper function to extract sources
-  const extractSources = (responseData) => {
-    const claims = responseData.fact_check_result?.claims || [];
-    
-    return claims.slice(0, 3).map(claim => ({
-      title: claim.claimReview?.[0]?.publisher?.name || 'Unknown Source',
-      url: claim.claimReview?.[0]?.url || '#',
-      credibility: 0.8
-    }));
-  };
-
-  const clearError = () => setError(null);
-
-  return {
-    result,
-    error,
-    isLoading,
-    performFactCheck,
-    clearError
-  };
-}
-
-function App() {
-  const { 
-    result, 
-    error, 
-    isLoading, 
-    performFactCheck, 
-    clearError 
-  } = useFactCheck();
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Header />
       
-      <main className="container mx-auto px-4 py-8 max-w-3xl flex-grow">
-        <div className="bg-white shadow-md rounded-lg p-6">
-          <FactCheckForm 
-            onSubmit={performFactCheck} 
-            isLoading={isLoading}
-          />
-          
-          {/* Error Handling */}
-          {error && (
-            <div className="mt-4 p-4 bg-red-50 border border-red-200 text-red-800 rounded-md flex justify-between items-center">
-              <div className="flex items-center">
-                <svg className="h-5 w-5 mr-2 text-red-600" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-                <span>{error}</span>
-              </div>
-              <button 
-                onClick={clearError}
-                className="text-red-700 hover:text-red-900 focus:outline-none"
-              >
-                Dismiss
-              </button>
+      <main className="flex-grow">
+        <div className="container mx-auto px-4 py-8 max-w-3xl">
+          {/* Card-like appearance for main content */}
+          <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
+            {/* Quick Guide */}
+            <div className="mb-6 bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
+              <h2 className="text-lg font-semibold text-blue-800 mb-2">How TruthGuard Works</h2>
+              <ol className="list-decimal list-inside space-y-1 text-blue-800">
+                <li>Enter text or a claim you want to verify</li>
+                <li>Optionally attach a screenshot of the content</li>
+                <li>Click "Verify Facts" to analyze</li>
+                <li>Review our detailed assessment with confidence rating</li>
+              </ol>
             </div>
-          )}
+            
+            {/* Form Section */}
+            <FactCheckForm onSubmit={handleSubmit} isLoading={isLoading} />
+            
+            {/* Error Message */}
+            {error && (
+              <div className="mt-4 p-4 bg-red-100 text-red-700 rounded-md">
+                <p className="font-medium">{error}</p>
+              </div>
+            )}
+            
+            {/* Results Section */}
+            {result && <ResultDisplay result={result} />}
+          </div>
           
-          {/* Result Display */}
-          {result && <ResultDisplay result={result} />}
+          {/* Information Section */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <InfoCard 
+              icon={
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+              }
+              title="Advanced AI Analysis"
+              description="We use cutting-edge AI to analyze claims against verified data sources."
+            />
+            <InfoCard 
+              icon={
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              }
+              title="Stay Informed"
+              description="Get clear, accurate information to help fight misinformation online."
+            />
+            <InfoCard 
+              icon={
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                </svg>
+              }
+              title="Visual Analysis"
+              description="Upload screenshots for our AI to analyze both text and visual content."
+            />
+          </div>
         </div>
       </main>
       
-      <footer className="container mx-auto px-4 py-6 text-center text-gray-500 text-sm">
-        <p>© 2025 TruthGuard - AI Misinformation Detection Tool</p>
-        <p className="text-xs mt-2">Powered by Fact-Checking Technologies</p>
+      <footer className="bg-gray-800 text-white py-4">
+        <div className="container mx-auto px-4 text-center">
+          <p>© {new Date().getFullYear()} TruthGuard - Empowering you with factual information</p>
+        </div>
       </footer>
+    </div>
+  );
+}
+
+// Helper component for info cards
+function InfoCard({ icon, title, description }) {
+  return (
+    <div className="bg-white rounded-lg shadow p-4 flex flex-col items-center text-center">
+      <div className="mb-3">
+        {icon}
+      </div>
+      <h3 className="font-semibold text-lg mb-2">{title}</h3>
+      <p className="text-gray-600">{description}</p>
     </div>
   );
 }
