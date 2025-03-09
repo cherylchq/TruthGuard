@@ -2,13 +2,20 @@ import React, { useState } from 'react';
 import Header from './components/Header';
 import FactCheckForm from './components/FactCheckForm';
 import ResultDisplay from './components/ResultDisplay';
+import TabNavigation from './components/TabNavigation';
+import DeepfakeForm from './components/DeepfakeForm';
+import DeepfakeResults from './components/DeepfakeResults';
+import DeepfakeGame from './components/DeepfakeGame';
 
 function App() {
+  const [activeTab, setActiveTab] = useState('factcheck');
+  const [deepfakeSubTab, setDeepfakeSubTab] = useState('detector'); // 'detector' or 'game'
   const [isLoading, setIsLoading] = useState(false);
-  const [result, setResult] = useState(null);
+  const [factCheckResult, setFactCheckResult] = useState(null);
+  const [deepfakeResult, setDeepfakeResult] = useState(null);
   const [error, setError] = useState(null);
 
-  const handleSubmit = async (submissionData) => {
+  const handleFactCheckSubmit = async (submissionData) => {
     setIsLoading(true);
     setError(null);
     
@@ -37,7 +44,7 @@ function App() {
       const data = await response.json();
       
       // Process analysis results
-      setResult({
+      setFactCheckResult({
         claim: submissionData.claim,
         analysis: data.ai_analysis.analysis,
         confidence: data.ai_analysis.confidence,
@@ -51,6 +58,61 @@ function App() {
     }
   };
 
+  const handleDeepfakeSubmit = async (submissionData) => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      // Create a FormData object for the image
+      const formData = new FormData();
+      formData.append('image', submissionData.image);
+      
+      const response = await fetch('/api/analyze-deepfake', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Server responded with status ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      // Process deepfake analysis results
+      setDeepfakeResult({
+        imageUrl: URL.createObjectURL(submissionData.image),
+        probability: data.deepfake_analysis.probability,
+        scores: data.deepfake_analysis.scores,
+        summary: data.deepfake_analysis.summary
+      });
+    } catch (err) {
+      console.error('Error analyzing image:', err);
+      setError('Failed to analyze image. Please try again later.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Reset results when switching tabs
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    setError(null);
+    // Only reset the result of the tab we're switching away from
+    if (tab === 'factcheck') {
+      setDeepfakeResult(null);
+    } else {
+      setFactCheckResult(null);
+    }
+  };
+
+  // Handle sub-tab changes in the deepfake section
+  const handleDeepfakeSubTabChange = (subTab) => {
+    setDeepfakeSubTab(subTab);
+    // Reset results when switching sub-tabs
+    setDeepfakeResult(null);
+    setError(null);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Header />
@@ -59,29 +121,81 @@ function App() {
         <div className="container mx-auto px-4 py-8 max-w-3xl">
           {/* Card-like appearance for main content */}
           <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-            {/* Quick Guide */}
-            <div className="mb-6 bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
-              <h2 className="text-lg font-semibold text-blue-800 mb-2">How TruthGuard Works</h2>
-              <ol className="list-decimal list-inside space-y-1 text-blue-800">
-                <li>Enter text or a claim you want to verify</li>
-                <li>Optionally attach a screenshot of the content</li>
-                <li>Click "Verify Facts" to analyze</li>
-                <li>Review our detailed assessment with confidence rating</li>
-              </ol>
-            </div>
+            <TabNavigation activeTab={activeTab} setActiveTab={handleTabChange} />
             
-            {/* Form Section */}
-            <FactCheckForm onSubmit={handleSubmit} isLoading={isLoading} />
-            
-            {/* Error Message */}
-            {error && (
-              <div className="mt-4 p-4 bg-red-100 text-red-700 rounded-md">
-                <p className="font-medium">{error}</p>
-              </div>
+            {activeTab === 'factcheck' ? (
+              <>
+                {/* Quick Guide for Fact Check */}
+                <div className="mb-6 bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
+                  <h2 className="text-lg font-semibold text-blue-800 mb-2">How TruthGuard Fact Checker Works</h2>
+                  <ol className="list-decimal list-inside space-y-1 text-blue-800">
+                    <li>Enter text or a claim you want to verify</li>
+                    <li>Optionally attach a screenshot of the content</li>
+                    <li>Click "Verify Facts" to analyze</li>
+                    <li>Review our detailed assessment with confidence rating</li>
+                  </ol>
+                </div>
+                
+                {/* Fact Check Form */}
+                <FactCheckForm onSubmit={handleFactCheckSubmit} isLoading={isLoading} />
+                
+                {/* Error Message */}
+                {error && activeTab === 'factcheck' && (
+                  <div className="mt-4 p-4 bg-red-100 text-red-700 rounded-md">
+                    <p className="font-medium">{error}</p>
+                  </div>
+                )}
+                
+                {/* Fact Check Results */}
+                {factCheckResult && <ResultDisplay result={factCheckResult} />}
+              </>
+            ) : (
+              <>
+                {/* Deepfake Sub-tabs */}
+                <div className="flex border-b border-gray-200 mb-6">
+                  <button
+                    onClick={() => handleDeepfakeSubTabChange('detector')}
+                    className={`py-2 px-4 font-medium text-sm mr-4 ${
+                      deepfakeSubTab === 'detector'
+                        ? 'border-b-2 border-blue-500 text-blue-600'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    Deepfake Detector
+                  </button>
+                  <button
+                    onClick={() => handleDeepfakeSubTabChange('game')}
+                    className={`py-2 px-4 font-medium text-sm ${
+                      deepfakeSubTab === 'game'
+                        ? 'border-b-2 border-blue-500 text-blue-600'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    Test Your Skills
+                  </button>
+                </div>
+                
+                {deepfakeSubTab === 'detector' ? (
+                  <>
+                    {/* Deepfake Detection Form */}
+                    <DeepfakeForm onSubmit={handleDeepfakeSubmit} isLoading={isLoading} />
+                    
+                    {/* Error Message */}
+                    {error && deepfakeSubTab === 'detector' && (
+                      <div className="mt-4 p-4 bg-red-100 text-red-700 rounded-md">
+                        <p className="font-medium">{error}</p>
+                      </div>
+                    )}
+                    
+                    {/* Deepfake Results */}
+                    {deepfakeResult && <DeepfakeResults result={deepfakeResult} />}
+                  </>
+                ) : (
+                  /* Deepfake Game */
+                  <DeepfakeGame />
+                )}
+              </>
             )}
-            
-            {/* Results Section */}
-            {result && <ResultDisplay result={result} />}
           </div>
           
           {/* Information Section */}
@@ -93,7 +207,7 @@ function App() {
                 </svg>
               }
               title="Advanced AI Analysis"
-              description="We use cutting-edge AI to analyze claims against verified data sources."
+              description="We use cutting-edge AI to analyze claims and detect manipulated images."
             />
             <InfoCard 
               icon={
@@ -110,8 +224,8 @@ function App() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
                 </svg>
               }
-              title="Visual Analysis"
-              description="Upload screenshots for our AI to analyze both text and visual content."
+              title="Comprehensive Tools"
+              description="Fact-check claims and detect deepfakes with our dual verification system."
             />
           </div>
         </div>
