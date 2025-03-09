@@ -1,5 +1,144 @@
 import React, { useState, useEffect } from 'react';
 
+// Add these components to your DeepfakeGame.jsx
+
+// Enhanced progress bar component
+const EnhancedProgressBar = ({ currentRound, totalRounds }) => {
+  const percentage = (currentRound / totalRounds) * 100;
+  
+  return (
+    <div className="mb-6">
+      <div className="flex justify-between text-sm text-gray-600 mb-1">
+        <span>Progress</span>
+        <span className="font-medium">Round {currentRound}/{totalRounds}</span>
+      </div>
+      <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+        <div 
+          className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-500 ease-out"
+          style={{ width: `${percentage}%` }}
+        ></div>
+      </div>
+    </div>
+  );
+};
+
+// Enhanced game controls
+const EnhancedGameControls = ({ onGuessReal, onGuessFake, feedback, onNextRound, loading }) => {
+  if (feedback) {
+    return (
+      <div className="flex justify-center">
+        <button
+          onClick={onNextRound}
+          className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-md hover:from-blue-700 hover:to-indigo-700 transition duration-300 ease-in-out transform hover:scale-105 shadow-md flex items-center"
+          disabled={loading}
+        >
+          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 9l3 3m0 0l-3 3m3-3H8m13 0a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          Next Image
+        </button>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="flex flex-col sm:flex-row justify-center gap-4">
+      <button
+        onClick={onGuessReal}
+        className="px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-md shadow-md hover:shadow-lg transition duration-300 ease-in-out transform hover:scale-105 flex items-center justify-center"
+        disabled={loading}
+      >
+        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+        </svg>
+        Real Image
+      </button>
+      <button
+        onClick={onGuessFake}
+        className="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-md shadow-md hover:shadow-lg transition duration-300 ease-in-out transform hover:scale-105 flex items-center justify-center"
+        disabled={loading}
+      >
+        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+        </svg>
+        Deepfake
+      </button>
+    </div>
+  );
+};
+
+// Enhanced game results component
+const EnhancedGameResults = ({ score, totalPlayed, gameStats, resetGame }) => {
+  const scorePercentage = Math.round((score / totalPlayed) * 100);
+  
+  return (
+    <div className="text-center p-6 bg-white rounded-lg shadow-md border border-gray-200">
+      <div className="mb-6">
+        <h3 className="text-2xl font-bold text-gray-800 mb-2">Your Results</h3>
+        <div className="relative mx-auto w-40 h-40 mb-4">
+          <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+            <circle
+              className="stroke-current text-gray-200"
+              cx="18" cy="18" r="16"
+              fill="none"
+              strokeWidth="3"
+            />
+            <circle
+              className={`stroke-current ${
+                scorePercentage >= 80 ? 'text-green-500' : 
+                scorePercentage >= 60 ? 'text-blue-500' : 
+                scorePercentage >= 40 ? 'text-yellow-500' : 
+                'text-red-500'
+              }`}
+              cx="18" cy="18" r="16"
+              fill="none"
+              strokeWidth="3"
+              strokeDasharray={`${scorePercentage}, 100`}
+              strokeLinecap="round"
+            />
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="text-3xl font-bold">{score}/{totalPlayed}</span>
+            <span className="text-lg font-medium">{scorePercentage}%</span>
+          </div>
+        </div>
+        
+        <div className="max-w-md mx-auto bg-gray-50 p-4 rounded-lg border border-gray-200 mb-6">
+          <h4 className="font-semibold mb-3 text-gray-700">Your Detection Skills</h4>
+          <div className="grid grid-cols-2 gap-y-3 text-left">
+            <div className="text-gray-600">Real images identified:</div>
+            <div className="font-medium">{gameStats.realIdentified}/{gameStats.realIdentified + gameStats.missedReal}</div>
+            
+            <div className="text-gray-600">Fake images identified:</div>
+            <div className="font-medium">{gameStats.fakeIdentified}/{gameStats.fakeIdentified + gameStats.missedFake}</div>
+          </div>
+        </div>
+        
+        {scorePercentage >= 80 ? (
+          <div className="mb-4 p-3 bg-green-100 text-green-800 rounded-lg font-medium">
+            Excellent! You have a sharp eye for spotting deepfakes.
+          </div>
+        ) : scorePercentage >= 60 ? (
+          <div className="mb-4 p-3 bg-blue-100 text-blue-800 rounded-lg font-medium">
+            Good job! With practice, you'll become even better at detecting fakes.
+          </div>
+        ) : (
+          <div className="mb-4 p-3 bg-yellow-100 text-yellow-800 rounded-lg font-medium">
+            Today's deepfakes can be challenging to spot. Keep practicing to improve your skills!
+          </div>
+        )}
+        
+        <button
+          onClick={resetGame}
+          className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-md shadow-md hover:shadow-lg transition duration-300 ease-in-out transform hover:scale-105"
+        >
+          Play Again
+        </button>
+      </div>
+    </div>
+  );
+};
+
 function DeepfakeGame() {
   const [currentImage, setCurrentImage] = useState(null);
   const [loading, setLoading] = useState(true);

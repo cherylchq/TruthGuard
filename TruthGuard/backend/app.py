@@ -199,7 +199,7 @@ def analyze_deepfake(image_file):
         
         # Parameters for the API call - using the correct 'deepfake' model
         params = {
-            'models': 'deepfake',
+            'models': 'deepfake,genai',
             'api_user': SIGHTENGINE_API_USER,
             'api_secret': SIGHTENGINE_API_SECRET
         }
@@ -224,18 +224,28 @@ def analyze_deepfake(image_file):
             # Extract deepfake probability from Sightengine response
             # The structure is: {'type': {'deepfake': score}}
             deepfake_score = result.get('type', {}).get('deepfake', 0)
+            ai_generated_score = result.get('type', {}).get('ai_generated', 0)
+            
+            # Take the maximum of both scores, as in detector.py
+            max_score = max(deepfake_score, ai_generated_score)
             
             # Scores dictionary
             scores = {
-                "deepfake": deepfake_score
+                "deepfake": deepfake_score,
+                "ai_generated": ai_generated_score,
+                "max_score": max_score
+
             }
             
             # Generate a human-readable summary
             summary = generate_deepfake_summary(deepfake_score)
             
             return {
-                "probability": deepfake_score,
-                "scores": scores,
+                "probability": max_score,  # Use max score for overall probability
+                "scores": {
+                    "deepfake": max_score,  # Display max score as deepfake score
+                    "ai_generated": ai_generated_score
+                },
                 "summary": summary
             }
         else:
@@ -249,14 +259,14 @@ def analyze_deepfake(image_file):
             print(error_msg)
             return {
                 "probability": 0.3,
-                "scores": {"deepfake": 0.3},
+                "scores": {"deepfake": 0.3, "ai_generated": 0.3},
                 "summary": f"Error: {error_msg}"
             }
     except Exception as e:
         print(f"Error during deepfake analysis: {e}")
         return {
             "probability": 0.3,
-            "scores": {"deepfake": 0.3},
+            "scores": {"deepfake": 0.3, "ai_generated": 0.3},
             "summary": f"Error during analysis: {str(e)}"
         }
 

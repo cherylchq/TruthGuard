@@ -41,7 +41,7 @@ function FactCheckForm({ onSubmit, isLoading }) {
       <h2 className="text-xl font-semibold mb-4">Submit Content to Fact-Check</h2>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label htmlFor="claim" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="claim" className="block text-base font-medium text-gray-700 mb-1">
             Enter text to fact-check:
           </label>
           <div className="relative">
@@ -58,7 +58,7 @@ function FactCheckForm({ onSubmit, isLoading }) {
             <button
               type="button"
               onClick={triggerFileInput}
-              className="absolute bottom-3 right-12 text-gray-500 hover:text-blue-500 focus:outline-none"
+              className="absolute bottom-3 right-3 text-gray-500 hover:text-blue-500 focus:outline-none"
               title="Attach screenshot"
               disabled={isLoading}
             >
