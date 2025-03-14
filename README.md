@@ -2,6 +2,10 @@
 
 TruthGuard is a comprehensive misinformation detection platform that helps users identify AI-generated or manipulated content across multiple formats. This tool combines computer vision and natural language processing technologies to offer three key features: AI text misinformation detection, deepfake image analysis, and an interactive deepfake image game that educates users. Through these capabilities, TruthGuard empowers users to verify the authenticity of digital content they encounter online.
 
+## 🏆 Awards
+
+NTU TechFest Hackathon Finalist 2025 - This project was selected as a finalist in the annual NTU TechFest Hackathon. We are excited to bring to you our solution tackling digital misinformation.
+
 ## Features
 
 - **Image Authentication**: Upload and analyze images to detect potential AI manipulation
