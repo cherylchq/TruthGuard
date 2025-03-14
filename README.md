@@ -144,4 +144,4 @@ https://youtu.be/BsJWZl-Xcj0
 - Cheryl Chin
 - Daniel Wang
 - Grace Ng
-- Benjamin Oliver Yick
+- Benjamin Yick
